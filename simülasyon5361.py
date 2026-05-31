@@ -20,7 +20,6 @@ Bu simülasyon, **Basit ve Çoklu Doğrusal Regresyon** modellerinde parametre t
 Aşağıdaki panelden parametreleri ayarlayarak, teorik En Küçük Kareler (OLS) çözümüne en yakın tahmini yapmaya çalışın. 
 """)
 
-
 with st.expander("📚 Teorik Arka Plan ve Formüller (Genel Gösterim)"):
     st.markdown("""
     **Doğrusal Regresyon Denklemleri:**
@@ -41,26 +40,38 @@ with st.expander("📚 Teorik Arka Plan ve Formüller (Genel Gösterim)"):
 
 if "boyut" not in st.session_state:
     st.session_state["boyut"] = 1  
+if "noise" not in st.session_state:
+    st.session_state["noise"] = 15.0
+
+def boyut_degistir(yeni_boyut):
+    st.session_state["boyut"] = yeni_boyut
+    st.session_state.pop("veri_sabit", None)
+
+def gurultu_degisti():
+    st.session_state.pop("veri_sabit", None)
+
+def cozumu_goster_tetikle():
+    st.session_state["cozumu_goster"] = True
+
+def yeni_veri_tetikle():
+    st.session_state.pop("veri_sabit", None)
+
 
 st.markdown("### ⚙️ Veri Uzayı Seçimi")
 col_dim1, col_dim2, _ = st.columns([1, 1, 4])
 
-if col_dim1.button("2D (Tek Değişkenli)", use_container_width=True):
-    st.session_state["boyut"] = 1
-    st.session_state.pop("veri_sabit", None)
-    st.rerun()
+with col_dim1:
+    st.button("2D (Tek Değişkenli)", on_click=boyut_degistir, args=(1,), use_container_width=True)
 
-if col_dim2.button("3D (Çok Değişkenli)", use_container_width=True):
-    st.session_state["boyut"] = 2
-    st.session_state.pop("veri_sabit", None)
-    st.rerun()
+with col_dim2:
+    st.button("3D (Çok Değişkenli)", on_click=boyut_degistir, args=(2,), use_container_width=True)
 
 st.markdown("---")
 
 if "veri_sabit" not in st.session_state:
     np.random.seed(np.random.randint(0, 1000))
     n_samples = 150
-    noise = 15.0
+    noise = st.session_state["noise"] 
     
     if st.session_state["boyut"] == 1:
         X = np.random.rand(n_samples, 1) * 10
@@ -157,32 +168,34 @@ with col_grafik:
                                    marker=dict(size=4, color='royalblue', opacity=0.8)))
         
         fig.add_trace(go.Surface(x=x1_grid, y=x2_grid, z=y_user_grid, name='Sizin Tahmininiz',
-                                 colorscale='Reds', showscale=False, opacity=0.8))
+                                 colorscale='Reds', showscale=False, opacity=0.8, showlegend=True))
 
         if st.session_state["cozumu_goster"]:
+            # 3D Yüzeylerin göstergede (legend) çıkması için showlegend=True eklendi
             y_best_grid = (best_slope1 * x1_grid) + (best_slope2 * x2_grid) + best_intercept
             fig.add_trace(go.Surface(x=x1_grid, y=x2_grid, z=y_best_grid, name='EKK (En İyi) Düzlemi',
-                                     colorscale='Greens', showscale=False, opacity=0.7))
+                                     colorscale='Greens', showscale=False, opacity=0.7, showlegend=True))
 
         fig.update_layout(scene=dict(xaxis_title='Değişken X1', yaxis_title='Değişken X2', zaxis_title='Hedef (Y)'),
                           template="plotly_white", 
                           margin=dict(l=0, r=0, t=10, b=80),
                           font=dict(size=12), height=500,
-                          legend=dict(orientation="h", yanchor="top", y=-0.1, xanchor="center", x=0.5))
+                          legend=dict(orientation="h", yanchor="top", y=-0.2, xanchor="center", x=0.5))
 
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
-col_btn1, col_btn2 = st.columns(2)
+col_btn1, col_slider, col_btn2 = st.columns([1.2, 2, 1.2], gap="medium")
 
 with col_btn1:
-    if st.button("✅ Optimizasyon Çözümünü Göster", use_container_width=True):
-        st.session_state["cozumu_goster"] = True
-        st.rerun()
+    st.markdown("<br>", unsafe_allow_html=True) 
+    st.button("✅ Optimizasyon Çözümünü Göster", on_click=cozumu_goster_tetikle, use_container_width=True)
+
+with col_slider:
+    st.slider("Veri Gürültüsü (Dağılım Miktarı)", min_value=0.0, max_value=50.0, step=1.0, key="noise", on_change=gurultu_degisti)
 
 with col_btn2:
-    if st.button("🔄 Yeni Veri Seti Üret", use_container_width=True):
-        st.session_state.pop("veri_sabit", None)
-        st.rerun()
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.button("🔄 Yeni Veri Seti Üret", on_click=yeni_veri_tetikle, use_container_width=True)
 
 st.markdown("---")
 st.subheader("📊 Model Karşılaştırması")
